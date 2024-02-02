@@ -1,5 +1,7 @@
 package com.generic.camerax
 
+import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
@@ -31,6 +33,11 @@ class CameraPreview : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
 
+//        setCameraPreview()
+        setBarcodeCameraRead()
+    }
+
+    private fun setCameraPreview() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
 
         cameraProviderFuture.addListener({
@@ -63,13 +70,15 @@ class CameraPreview : AppCompatActivity() {
         }, ContextCompat.getMainExecutor(this))
     }
 
-    private fun startCamera() {
-        var cameraController = LifecycleCameraController(baseContext)
+    private fun setBarcodeCameraRead() {
+        val cameraController = LifecycleCameraController(baseContext)
         val previewView: PreviewView = binding.viewFinder
 
         val options = BarcodeScannerOptions.Builder()
-            .setBarcodeFormats(Barcode.FORMAT_CODABAR)
+            .setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS)
+//            .enableAllPotentialBarcodes()
             .build()
+
         barcodeScanner = BarcodeScanning.getClient(options)
 
         cameraController.setImageAnalysisAnalyzer(
@@ -84,22 +93,26 @@ class CameraPreview : AppCompatActivity() {
                     (barcodeResults.size == 0) ||
                     (barcodeResults.first() == null)
                 ) {
-                    previewView.overlay.clear()
-                    previewView.setOnTouchListener { _, _ -> false } //no-op
+                    // keep trying
                     return@MlKitAnalyzer
                 }
 
-//                val qrCodeViewModel = QrCodeViewModel(barcodeResults[0])
-//                val qrCodeDrawable = QrCodeDrawable(qrCodeViewModel)
-
-//                previewView.setOnTouchListener(qrCodeViewModel.qrCodeTouchCallback)
-                previewView.overlay.clear()
-//                previewView.overlay.add(qrCodeDrawable)
+                val resultIntent = Intent()
+                with(resultIntent) {
+                    putExtra("BARCODE", barcodeResults[0].rawValue)
+                }
+                setResult(Activity.RESULT_OK, resultIntent)
+                finish()
             }
         )
 
         cameraController.bindToLifecycle(this)
         previewView.controller = cameraController
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        barcodeScanner.close()
     }
 
     companion object {

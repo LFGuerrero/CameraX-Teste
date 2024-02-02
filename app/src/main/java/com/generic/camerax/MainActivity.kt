@@ -18,7 +18,8 @@ class MainActivity : AppCompatActivity() {
 
     private val cameraResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-
+            val resultado = result.data?.getStringExtra("BARCODE")
+            binding.tvBarcodePreview.text = resultado ?: "null"
         }
     }
 
