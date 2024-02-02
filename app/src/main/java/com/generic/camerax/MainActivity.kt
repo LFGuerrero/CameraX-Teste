@@ -10,16 +10,20 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.generic.camerax.Commons.BARCODE_EXTRA
 import com.generic.camerax.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
 
+    /**
+     * Retorno vindo da leitura da camera
+     */
     private val cameraResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            val resultado = result.data?.getStringExtra("BARCODE")
-            binding.tvBarcodePreview.text = resultado ?: "null"
+            val resultado = result.data?.getStringExtra(BARCODE_EXTRA)
+            binding.tvBarcodePreview.text = resultado ?: ""
         }
     }
 
@@ -40,11 +44,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Chama a tela da camera e espera pelo retorno
+     */
     private fun initCamera() {
         val cameraIntent = Intent(this, CameraPreview::class.java)
         cameraResult.launch(cameraIntent)
     }
 
+    /**
+     * Retorno da permissao
+     */
     override fun onRequestPermissionsResult(
         requestCode: Int, permissions: Array<String>, grantResults:
         IntArray
@@ -64,6 +74,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Valida se tem a permissao de acessar a camera
+     */
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
         ContextCompat.checkSelfPermission(
             baseContext, it

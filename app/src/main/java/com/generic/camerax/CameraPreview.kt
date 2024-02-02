@@ -5,21 +5,22 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.camera2.Camera2Config
 import androidx.camera.core.CameraSelector
-import androidx.camera.core.Preview
-import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.core.CameraXConfig
 import androidx.camera.mlkit.vision.MlKitAnalyzer
 import androidx.camera.view.CameraController.COORDINATE_SYSTEM_VIEW_REFERENCED
 import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import com.generic.camerax.Commons.BARCODE_EXTRA
 import com.generic.camerax.databinding.CameraPreviewBinding
 import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 
-class CameraPreview : AppCompatActivity() {
+class CameraPreview : AppCompatActivity(), CameraXConfig.Provider {
 
     private lateinit var binding: CameraPreviewBinding
     private lateinit var barcodeScanner: BarcodeScanner
@@ -32,51 +33,19 @@ class CameraPreview : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-
-//        setCameraPreview()
         setBarcodeCameraRead()
     }
 
-    private fun setCameraPreview() {
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
-
-        cameraProviderFuture.addListener({
-            // Used to bind the lifecycle of cameras to the lifecycle owner
-            val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
-
-            // Preview
-            val preview = Preview.Builder()
-                .build()
-                .also {
-                    it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
-                }
-
-            // Select back camera as a default
-            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
-            try {
-                // Unbind use cases before rebinding
-                cameraProvider.unbindAll()
-
-                // Bind use cases to camera
-                cameraProvider.bindToLifecycle(
-                    this, cameraSelector, preview
-                )
-
-            } catch (exc: Exception) {
-                Log.e(TAG, "Use case binding failed", exc)
-            }
-
-        }, ContextCompat.getMainExecutor(this))
-    }
-
+    /**
+     * Inicializa a camera e faz a analise da imagem capturada
+     * para encontrar um codigo de barras valido
+     */
     private fun setBarcodeCameraRead() {
         val cameraController = LifecycleCameraController(baseContext)
         val previewView: PreviewView = binding.viewFinder
 
         val options = BarcodeScannerOptions.Builder()
             .setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS)
-//            .enableAllPotentialBarcodes()
             .build()
 
         barcodeScanner = BarcodeScanning.getClient(options)
@@ -97,12 +66,17 @@ class CameraPreview : AppCompatActivity() {
                     return@MlKitAnalyzer
                 }
 
-                val resultIntent = Intent()
-                with(resultIntent) {
-                    putExtra("BARCODE", barcodeResults[0].rawValue)
+                val textResult = barcodeResults[0].rawValue
+                if (textResult?.isValidBarcode() == true) {
+                    val resultIntent = Intent()
+                    resultIntent.putExtra(BARCODE_EXTRA, textResult)
+
+                    setResult(Activity.RESULT_OK, resultIntent)
+                    finish()
+                } else {
+                    // keep trying
+                    return@MlKitAnalyzer
                 }
-                setResult(Activity.RESULT_OK, resultIntent)
-                finish()
             }
         )
 
@@ -110,12 +84,27 @@ class CameraPreview : AppCompatActivity() {
         previewView.controller = cameraController
     }
 
+    /**
+     * Valida o numero de caracteres do codigo de barras
+     */
+    private fun String.isValidBarcode(): Boolean =
+        this.length == 36 || this.length in 44..48
+
+    /**
+     * Finaliza o detector de codigo de barras
+     */
     override fun onDestroy() {
         super.onDestroy()
         barcodeScanner.close()
     }
 
-    companion object {
-        private const val TAG = "CameraX-MLKit"
+    /**
+     * Escolher a camera manualmente pode reduzir o tempo de inicializaçao da camera
+     */
+    override fun getCameraXConfig(): CameraXConfig {
+        return CameraXConfig.Builder.fromConfig(Camera2Config.defaultConfig())
+            .setAvailableCamerasLimiter(CameraSelector.DEFAULT_BACK_CAMERA)
+            .setMinimumLoggingLevel(Log.ERROR)
+            .build()
     }
 }
