@@ -29,13 +29,13 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         binding.btnCallCamera.setOnClickListener {
-            if (allPermissionsGranted()) {
-                initCamera()
-            } else {
-                ActivityCompat.requestPermissions(
-                    this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS
-                )
-            }
+            initCamera()
+        }
+
+        if (!allPermissionsGranted()) {
+            ActivityCompat.requestPermissions(
+                this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS
+            )
         }
     }
 
