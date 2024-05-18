@@ -22,12 +22,11 @@ import com.google.mlkit.vision.barcode.common.Barcode
 
 class CameraPreview : AppCompatActivity(), CameraXConfig.Provider {
 
-    private lateinit var binding: CameraPreviewBinding
+    private val binding by lazy { CameraPreviewBinding.inflate(layoutInflater) }
     private lateinit var barcodeScanner: BarcodeScanner
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = CameraPreviewBinding.inflate(layoutInflater)
         setContentView(binding.root)
     }
 
@@ -42,7 +41,7 @@ class CameraPreview : AppCompatActivity(), CameraXConfig.Provider {
      */
     private fun setBarcodeCameraRead() {
         val cameraController = LifecycleCameraController(baseContext)
-        val previewView: PreviewView = binding.viewFinder
+        val previewView: PreviewView = binding.cameraPreview
 
         val options = BarcodeScannerOptions.Builder()
             .setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS)
@@ -58,24 +57,18 @@ class CameraPreview : AppCompatActivity(), CameraXConfig.Provider {
                 ContextCompat.getMainExecutor(this)
             ) { result: MlKitAnalyzer.Result? ->
                 val barcodeResults = result?.getValue(barcodeScanner)
-                if ((barcodeResults == null) ||
-                    (barcodeResults.size == 0) ||
-                    (barcodeResults.first() == null)
-                ) {
-                    // keep trying
-                    return@MlKitAnalyzer
-                }
+                when {
+                    barcodeResults == null || barcodeResults.size == 0 || barcodeResults.first() == null -> return@MlKitAnalyzer
 
-                val textResult = barcodeResults[0].rawValue
-                if (textResult?.isValidBarcode() == true) {
-                    val resultIntent = Intent()
-                    resultIntent.putExtra(BARCODE_EXTRA, textResult)
+                    barcodeResults[0].rawValue?.isValidBarcode() == true -> {
+                        val resultIntent = Intent()
+                        resultIntent.putExtra(BARCODE_EXTRA, barcodeResults[0].rawValue)
 
-                    setResult(Activity.RESULT_OK, resultIntent)
-                    finish()
-                } else {
-                    // keep trying
-                    return@MlKitAnalyzer
+                        setResult(Activity.RESULT_OK, resultIntent)
+                        finish()
+                    }
+
+                    else -> return@MlKitAnalyzer
                 }
             }
         )
@@ -87,8 +80,7 @@ class CameraPreview : AppCompatActivity(), CameraXConfig.Provider {
     /**
      * Valida o numero de caracteres do codigo de barras
      */
-    private fun String.isValidBarcode(): Boolean =
-        this.length == 36 || this.length in 44..48
+    private fun String.isValidBarcode(): Boolean = this.length in 36..48
 
     /**
      * Finaliza o detector de codigo de barras
