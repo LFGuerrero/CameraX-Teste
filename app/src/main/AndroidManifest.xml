@@ -31,6 +31,9 @@
         <activity
             android:name=".CameraPreview"
             android:screenOrientation="landscape" />
+
+        <activity android:name="com.generic.qrcode.QrcodePdf"
+            android:screenOrientation="portrait"/>
     </application>
 
     <uses-feature
