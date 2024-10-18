@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -70,7 +71,7 @@ class QrcodePdf : AppCompatActivity() {
             page.close()
             pdfRenderer.close()
             parcelFileDescriptor.close()
-            return bitmap
+            return rescaleBitmap(bitmap, 0.5f)
         } catch (e: IOException) {
             e.printStackTrace()
             return null
@@ -80,15 +81,19 @@ class QrcodePdf : AppCompatActivity() {
     private fun scanQrCodeFromBitmap(bitmap: Bitmap, callback: (String?) -> Unit) {
         val image = InputImage.fromBitmap(bitmap, 0)
         val options = BarcodeScannerOptions.Builder()
-            .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+            .setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS)
             .build()
         val scanner: BarcodeScanner = BarcodeScanning.getClient(options)
 
         scanner.process(image)
             .addOnSuccessListener { barcodes ->
                 if (barcodes.isNotEmpty()) {
+                    barcodes.forEachIndexed { index, barcode ->
+                        Log.v("READER:", "RESULT $index: ${barcode.rawValue}")
+                    }
                     callback(barcodes[0].rawValue)
                 } else {
+                    Log.v("READER:", "NO RESULT")
                     callback(null)
                 }
             }
@@ -96,5 +101,11 @@ class QrcodePdf : AppCompatActivity() {
                 it.printStackTrace()
                 callback(null)
             }
+    }
+
+    private fun rescaleBitmap(bitmap: Bitmap, factor: Float): Bitmap {
+        val newWidth = (bitmap.width * factor).toInt()
+        val newHeight = (bitmap.height * factor).toInt()
+        return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
     }
 }
